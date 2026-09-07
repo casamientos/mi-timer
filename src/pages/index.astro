@@ -47,9 +47,11 @@ import Layout from '../layouts/Layout.astro';
 
     onAuth((user) => {
       if (user) {
-        const cta = document.querySelector('a[href="/mi-timer/config"]');
-        if (cta) cta.textContent = '+ Crear un timer';
+        window.location.href = '/mi-timer/timers';
+        return;
       }
+      const cta = document.querySelector('a[href="/mi-timer/config"]');
+      if (cta) cta.textContent = '+ Crear un timer';
     });
   </script>
 

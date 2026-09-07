@@ -4,7 +4,9 @@ import Layout from '../layouts/Layout.astro';
 
 <Layout title="Mis timers · mi-timer">
   <div class="container timers-page">
-    <div class="timers-hero" data-auth-shell style="display: none">
+
+    <!-- Cabecera: usuario con sesión -->
+    <div class="timers-hero" data-hero-user style="display: none">
       <div>
         <h1>Mis timers</h1>
         <p class="sub" data-greeting>Gestioná tus cuentas regresivas</p>
@@ -14,6 +16,20 @@ import Layout from '../layouts/Layout.astro';
       </a>
     </div>
 
+    <!-- Cabecera: presentación sin sesión -->
+    <div class="timers-hero" data-hero-demo style="display: none">
+      <div>
+        <h1>Explorá mi-timer</h1>
+        <p class="sub">
+          Timers de ejemplo. Creá tu cuenta para tener los tuyos.
+        </p>
+      </div>
+      <div class="hero-actions">
+        <a class="btn btn-primary" href="/mi-timer/register">Crear cuenta</a>
+        <a class="btn" href="/mi-timer/login">Iniciar sesión</a>
+      </div>
+    </div>
+
     <div class="state-shell" data-loading>
       <div class="state-box">
         <div class="spinner"></div>
@@ -21,15 +37,7 @@ import Layout from '../layouts/Layout.astro';
       </div>
     </div>
 
-    <div class="state-shell" data-auth-shell style="display: none">
-      <div class="state-box">
-        <h1>Necesitás iniciar sesión</h1>
-        <p>Para ver y crear tus timers, primero ingresá a tu cuenta.</p>
-        <a class="btn btn-primary" href="/mi-timer/login">Iniciar sesión</a>
-      </div>
-    </div>
-
-    <div class="timers-grid" data-timers-grid style="display: none"></div>
+    <div class="timers-grid" data-timers-grid></div>
 
     <div class="empty-state" data-empty style="display: none">
       <div class="empty-icon">⏰</div>
@@ -39,20 +47,39 @@ import Layout from '../layouts/Layout.astro';
         + Crear mi primer timer
       </a>
     </div>
+
+    <div class="demo-note" data-demo-note style="display: none">
+      <p>
+        <span class="demo-note-icon">✨</span>
+        Redimensioná las tarjetas arrastrando la esquina inferior derecha y bloqueá
+        el tamaño con el candado. Los timers de ejemplo guardan los cambios en tu
+        navegador hasta que crees tu cuenta.
+      </p>
+    </div>
   </div>
 
   <script>
     import { onAuth } from '../scripts/auth';
-    import { leerTimers } from '../scripts/timers';
-    import { timerCardHtml, initTimerCards } from '../scripts/timerCard';
+    import {
+      leerTimers,
+      actualizarCampoTimer,
+      WIDTH_MIN,
+      WIDTH_MAX,
+    } from '../scripts/timers';
+    import { timersDemo, guardarCustomDemo } from '../scripts/demo';
+    import {
+      timerCardHtml,
+      initTimerCards,
+      configurarTimerCards,
+    } from '../scripts/timerCard';
 
     const timersGrid = document.querySelector<HTMLElement>('[data-timers-grid]');
     const emptyState = document.querySelector<HTMLElement>('[data-empty]');
     const loading = document.querySelector<HTMLElement>('[data-loading]');
-    const authShells = document.querySelectorAll<HTMLElement>('[data-auth-shell]');
+    const heroUser = document.querySelector<HTMLElement>('[data-hero-user]');
+    const heroDemo = document.querySelector<HTMLElement>('[data-hero-demo]');
+    const demoNote = document.querySelector<HTMLElement>('[data-demo-note]');
     const greeting = document.querySelector<HTMLElement>('[data-greeting]');
-
-    let currentUser: any = null;
 
     function getHourMessage(): string {
       const h = new Date().getHours();
@@ -61,39 +88,63 @@ import Layout from '../layouts/Layout.astro';
       return 'Buenas noches';
     }
 
-    function renderTimers(userId: string) {
+    function mostrarGrid(timers: { id: string }[]) {
+      const hay = timers.length > 0;
+      emptyState!.style.display = hay ? 'none' : '';
+      timersGrid!.style.display = hay ? 'flex' : 'none';
+    }
+
+    function renderTimersUsuario(userId: string) {
       const timers = leerTimers(userId);
-      if (timers.length === 0) {
-        timersGrid!.style.display = 'none';
-        emptyState!.style.display = '';
-        return;
-      }
-      emptyState!.style.display = 'none';
-      timersGrid!.style.display = 'grid';
       timersGrid!.innerHTML = timers.map(timerCardHtml).join('\n');
+      configurarTimerCards(timersGrid!, {
+        onResize: (id, width, height) =>
+          actualizarCampoTimer(userId, id, {
+            width: Math.min(WIDTH_MAX, Math.max(WIDTH_MIN, width)),
+            height,
+          }),
+        onLock: (id, locked) => actualizarCampoTimer(userId, id, { locked }),
+      });
       initTimerCards(timersGrid!);
+      mostrarGrid(timers);
+    }
+
+    function renderPresentacion() {
+      const timers = timersDemo();
+      timersGrid!.innerHTML = timers.map(timerCardHtml).join('\n');
+      configurarTimerCards(timersGrid!, {
+        onResize: (id, width, height) =>
+          guardarCustomDemo(id, {
+            width: Math.min(WIDTH_MAX, Math.max(WIDTH_MIN, width)),
+            height,
+          }),
+        onLock: (id, locked) => guardarCustomDemo(id, { locked }),
+      });
+      initTimerCards(timersGrid!);
+      mostrarGrid(timers);
     }
 
     function setAuthUI(user: any) {
-      currentUser = user;
-      loading!.style.display = 'none';
-
-      authShells.forEach((el) => {
-        el.style.display = user ? '' : 'none';
-      });
-
-      if (user) {
+      if (user && typeof user.uid === 'string') {
         const name = user.displayName || user.email.split('@')[0] || '';
         const saludo = `${getHourMessage()}, ${name}!`;
         if (greeting) greeting.textContent = saludo;
-        renderTimers(user.uid);
+        heroUser!.style.display = '';
+        heroDemo!.style.display = 'none';
+        demoNote!.style.display = 'none';
+        renderTimersUsuario(user.uid);
+      } else {
+        currentUserId = null;
+        heroUser!.style.display = 'none';
+        heroDemo!.style.display = '';
+        demoNote!.style.display = '';
+        renderPresentacion();
       }
     }
 
-    onAuth(setAuthUI);
-
-    window.addEventListener('auth:timers-updated', () => {
-      if (currentUser) renderTimers(currentUser.uid);
+    onAuth((user) => {
+      loading!.style.display = 'none';
+      setAuthUI(user);
     });
   </script>
 </Layout>

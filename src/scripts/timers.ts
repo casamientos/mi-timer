@@ -1,23 +1,69 @@
-export type TimerSize = 'small' | 'medium' | 'large';
-
 export interface TimerData {
   id: string;
   name: string;
   startDate: string;
   endDate: string;
   color: string;
-  size: TimerSize;
+  width: number;
+  height: number | null;
+  locked: boolean;
   createdAt: number;
 }
 
-export interface TimerFolder {
-  userId: string;
-  timers: TimerData[];
+export interface TimerCambios {
+  width?: number;
+  height?: number | null;
+  locked?: boolean;
+  name?: string;
+  startDate?: string;
+  endDate?: string;
+  color?: string;
 }
 
-const SIZES: TimerSize[] = ['small', 'medium', 'large'];
+const SIZES: string[] = ['small', 'medium', 'large'];
 
-const VALID_SIZES = new Set<string>(SIZES);
+export const WIDTH_MIN = 220;
+export const WIDTH_MAX = 560;
+export const HEIGHT_MIN = 170;
+export const HEIGHT_MAX = 560;
+export const WIDTH_DEFAULT = 320;
+
+export type TimerSize = 'small' | 'medium' | 'large';
+
+export const TAMAÑOS: { value: TimerSize; label: string; hint: string; width: number }[] = [
+  { value: 'small', label: 'Compacto', hint: '260 px · tarjeta pequeña', width: 260 },
+  { value: 'medium', label: 'Mediano', hint: '330 px · tarjeta estándar', width: 330 },
+  { value: 'large', label: 'Grande', hint: '430 px · tarjeta destacada', width: 430 },
+];
+
+const SIZE_WIDTH: Partial<Record<TimerSize, number>> = {
+  small: 260,
+  medium: 330,
+  large: 430,
+};
+
+export function esTamañoValido(size: string): size is TimerSize {
+  return SIZES.includes(size);
+}
+
+export function normalizarTimer(t: Partial<TimerData> & Record<string, unknown>): TimerData {
+  const rawWidth = t.width;
+  const width =
+    typeof rawWidth === 'number' && rawWidth >= WIDTH_MIN && rawWidth <= WIDTH_MAX
+      ? Math.round(rawWidth)
+      : SIZE_WIDTH[t.size as TimerSize] ?? WIDTH_DEFAULT;
+  return {
+    id: String(t.id ?? `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`),
+    name: String(t.name ?? 'Sin nombre'),
+    startDate: String(t.startDate ?? new Date().toISOString()),
+    endDate: String(t.endDate ?? new Date().toISOString()),
+    color: typeof t.color === 'string' && t.color ? t.color : '#7bb5e3',
+    width,
+    height: typeof t.height === 'number' && t.height >= HEIGHT_MIN ? Math.round(t.height) : null,
+    locked: Boolean(t.locked),
+    createdAt: typeof t.createdAt === 'number' ? t.createdAt : Date.now(),
+  };
+}
 
 function storageKey(userId: string): string {
   return `mi-timer:${userId}`;
@@ -30,9 +76,7 @@ function uid(): string {
   return `timer-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
-export function generarTimer(
-  data: Omit<TimerData, 'id' | 'createdAt'>,
-): TimerData {
+export function generarTimer(data: Omit<TimerData, 'id' | 'createdAt'>): TimerData {
   return {
     id: uid(),
     ...data,
@@ -45,8 +89,9 @@ export function leerTimers(userId: string): TimerData[] {
   try {
     const raw = window.localStorage.getItem(storageKey(userId));
     if (!raw) return [];
-    const parsed = JSON.parse(raw) as TimerFolder;
-    return Array.isArray(parsed.timers) ? parsed.timers : [];
+    const parsed = JSON.parse(raw) as { timers?: unknown[] };
+    if (!Array.isArray(parsed.timers)) return [];
+    return parsed.timers.map((t) => normalizarTimer(t as Record<string, unknown>));
   } catch {
     return [];
   }
@@ -54,11 +99,16 @@ export function leerTimers(userId: string): TimerData[] {
 
 function guardarTimers(userId: string, timers: TimerData[]): void {
   if (typeof window === 'undefined') return;
-  const folder: TimerFolder = { userId, timers };
-  window.localStorage.setItem(storageKey(userId), JSON.stringify(folder));
+  window.localStorage.setItem(
+    storageKey(userId),
+    JSON.stringify({ userId, timers }),
+  );
 }
 
-export function agregarTimer(userId: string, data: Omit<TimerData, 'id' | 'createdAt'>): TimerData {
+export function agregarTimer(
+  userId: string,
+  data: Omit<TimerData, 'id' | 'createdAt'>,
+): TimerData {
   const timer = generarTimer(data);
   const timers = leerTimers(userId);
   timers.push(timer);
@@ -75,6 +125,15 @@ export function actualizarTimer(userId: string, timer: TimerData): boolean {
   return true;
 }
 
+export function actualizarCampoTimer(userId: string, id: string, cambios: TimerCambios): boolean {
+  const timers = leerTimers(userId);
+  const index = timers.findIndex((t) => t.id === id);
+  if (index === -1) return false;
+  timers[index] = { ...timers[index], ...cambios };
+  guardarTimers(userId, timers);
+  return true;
+}
+
 export function eliminarTimer(userId: string, id: string): boolean {
   const timers = leerTimers(userId);
   const restantes = timers.filter((t) => t.id !== id);
@@ -87,16 +146,6 @@ export function encontrarTimer(userId: string, id: string): TimerData | null {
   const timers = leerTimers(userId);
   return timers.find((t) => t.id === id) ?? null;
 }
-
-export function esTamañoValido(size: string): size is TimerSize {
-  return VALID_SIZES.has(size);
-}
-
-export const TAMAÑOS: { value: TimerSize; label: string; hint: string }[] = [
-  { value: 'small', label: 'Compacto', hint: 'Tarjeta pequeña' },
-  { value: 'medium', label: 'Mediano', hint: 'Tarjeta estándar' },
-  { value: 'large', label: 'Grande', hint: 'Tarjeta destacada' },
-];
 
 export const COLORES_PREDEFINIDOS: string[] = [
   '#7bb5e3',

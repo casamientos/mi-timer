@@ -113,6 +113,7 @@ const { title = 'mi-timer', showNav = true } = Astro.props;
 
       logoutBtn?.addEventListener('click', async () => {
         await cerrarSesion();
+        window.location.href = '/mi-timer/timers';
       });
 
       onAuth(setAuthUI);

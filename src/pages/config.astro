@@ -57,8 +57,26 @@ import SizeSelector from '../components/SizeSelector.astro';
             </div>
 
             <div class="field">
-              <label>Tamaño</label>
-              <SizeSelector name="size" value="medium" />
+              <label>Tamaño (ancho)</label>
+              <SizeSelector name="width" width={330} />
+              <span class="hint">
+                Después podés redimensionar cada tarjeta arrastrando su esquina en la vista de timers.
+              </span>
+            </div>
+
+            <div class="field">
+              <label class="lock-toggle-label">
+                <input
+                  type="checkbox"
+                  data-input-locked
+                  class="lock-toggle-input"
+                />
+                <span class="lock-toggle-track"></span>
+                <span class="lock-toggle-text">Bloquear el tamaño de la tarjeta</span>
+              </label>
+              <span class="hint">
+                Si está bloqueado, el tamaño no puede modificarse desde la vista de timers.
+              </span>
             </div>
 
             <div class="config-actions">
@@ -110,9 +128,9 @@ import SizeSelector from '../components/SizeSelector.astro';
       agregarTimer,
       actualizarTimer,
       eliminarTimer,
-      esTamañoValido,
+      WIDTH_MIN,
+      WIDTH_MAX,
       type TimerData,
-      type TimerSize,
     } from '../scripts/timers';
     import { timerCardHtml, initTimerCards } from '../scripts/timerCard';
     import { aInputLocal } from '../scripts/countdown';
@@ -134,6 +152,7 @@ import SizeSelector from '../components/SizeSelector.astro';
     const inputNombre = document.querySelector<HTMLInputElement>('[data-input-nombre]');
     const inputInicio = document.querySelector<HTMLInputElement>('[data-input-inicio]');
     const inputFin = document.querySelector<HTMLInputElement>('[data-input-fin]');
+    const inputLocked = document.querySelector<HTMLInputElement>('[data-input-locked]');
 
     let currentUser: any = null;
     let editing: TimerData | null = null;
@@ -152,15 +171,20 @@ import SizeSelector from '../components/SizeSelector.astro';
       return form?.querySelector(selector) as HTMLInputElement;
     }
 
+    function clampWidth(w: number): number {
+      return Math.min(WIDTH_MAX, Math.max(WIDTH_MIN, Math.round(w)));
+    }
+
     function datosActualesDeFormulario(): Omit<TimerData, 'id' | 'createdAt'> {
+      const widthRaw = Number(campo('[data-width-input]').value);
       return {
         name: campo('[data-input-nombre]').value.trim(),
         startDate: new Date(campo('[data-input-inicio]').value).toISOString(),
         endDate: new Date(campo('[data-input-fin]').value).toISOString(),
         color: campo('[data-color-value]').value || '#7bb5e3',
-        size: esTamañoValido(campo('[data-size-value]').value)
-          ? (campo('[data-size-value]').value as TimerSize)
-          : 'medium',
+        width: Number.isNaN(widthRaw) ? WIDTH_MIN : clampWidth(widthRaw),
+        height: editing?.height ?? null,
+        locked: inputLocked?.checked ?? false,
       };
     }
 
@@ -168,30 +192,34 @@ import SizeSelector from '../components/SizeSelector.astro';
       inputNombre!.value = timer.name;
       inputInicio!.value = aInputLocal(timer.startDate);
       inputFin!.value = aInputLocal(timer.endDate);
+      if (inputLocked) inputLocked.checked = Boolean(timer.locked);
       const picker = shell!.querySelector('[data-color-picker]');
       picker!.dispatchEvent(
         new CustomEvent('colorvalue', { detail: { color: timer.color } }),
       );
       const selector = shell!.querySelector('[data-size-selector]');
       selector!.dispatchEvent(
-        new CustomEvent('sizevalue', { detail: { size: timer.size } }),
+        new CustomEvent('widthvalue', { detail: { width: timer.width } }),
       );
     }
 
     function actualizarPreview() {
       if (!preview) return;
-      const { name, startDate, endDate, color, size } = datosActualesDeFormulario();
+      const { name, startDate, endDate, color, width, height, locked } =
+        datosActualesDeFormulario();
       const timer: TimerData = {
         id: editing?.id ?? 'preview',
         name: name || 'Nuevo timer',
         startDate,
         endDate,
         color,
-        size,
+        width,
+        height,
+        locked,
         createdAt: Date.now(),
       };
       preview.innerHTML = timerCardHtml(timer);
-      initTimerCards(preview);
+      initTimerCards(preview, undefined, { bindInteractions: false });
     }
 
     function defaultsParaNuevo() {
@@ -204,6 +232,7 @@ import SizeSelector from '../components/SizeSelector.astro';
         )}:${pad(d.getMinutes())}`;
       inputInicio!.value = fmt(inicio);
       inputFin!.value = fmt(fin);
+      if (inputLocked) inputLocked.checked = false;
     }
 
     const actualizarPreviewDebounced = (() => {
@@ -215,8 +244,9 @@ import SizeSelector from '../components/SizeSelector.astro';
     })();
 
     form?.addEventListener('input', actualizarPreviewDebounced);
+    form?.addEventListener('change', actualizarPreview);
     form?.addEventListener('colorchange', actualizarPreview);
-    form?.addEventListener('sizechange', actualizarPreview);
+    form?.addEventListener('widthchange', actualizarPreview);
 
     form?.addEventListener('submit', async (event) => {
       event.preventDefault();
@@ -287,7 +317,7 @@ import SizeSelector from '../components/SizeSelector.astro';
         );
         const selector = shell!.querySelector('[data-size-selector]');
         selector!.dispatchEvent(
-          new CustomEvent('sizevalue', { detail: { size: 'medium' } }),
+          new CustomEvent('widthvalue', { detail: { width: 330 } }),
         );
       }
 

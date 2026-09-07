@@ -376,14 +376,27 @@ input {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
-  padding: 1.6rem;
+  padding: 1.4rem;
   display: flex;
   flex-direction: column;
   gap: 0;
-  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
   position: relative;
   overflow: hidden;
   text-align: center;
+  flex: 0 0 auto;
+  width: 320px;
+  min-width: 220px;
+  min-height: 170px;
+  max-width: 560px;
+  max-height: 560px;
+  container-type: inline-size;
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.timer-card.dragging {
+  box-shadow: 0 0 0 2px var(--accent, #7bb5e3), 0 8px 32px rgba(0, 0, 0, 0.7);
+  z-index: 5;
+  user-select: none;
 }
 
 .timer-card::before {
@@ -399,7 +412,6 @@ input {
 }
 
 .timer-card:hover {
-  transform: translateY(-4px);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.7), 0 0 24px color-mix(in srgb, var(--accent, #7bb5e3) 14%, transparent);
 }
 
@@ -407,9 +419,12 @@ input {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.6rem;
-  margin-bottom: 1.1rem;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
   position: relative;
+  padding-right: 2rem;
+  padding-left: 1.2rem;
+  min-height: 2.4em;
 }
 
 .timer-dot {
@@ -421,52 +436,85 @@ input {
 
 .timer-name {
   margin: 0;
-  font-size: 1.9rem;
+  font-size: clamp(1.05rem, 5.2cqw, 2.4rem);
   letter-spacing: 2px;
   line-height: 1.1;
   word-break: break-word;
 }
 
+/* Candado */
+.lock-btn {
+  position: absolute;
+  top: -0.4rem;
+  right: -0.6rem;
+  font-size: clamp(0.9rem, 3cqw, 1.2rem);
+  line-height: 1;
+  padding: 0.35rem;
+  background-color: rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  opacity: 0.55;
+  transition: opacity 0.2s ease, border-color 0.2s ease;
+  z-index: 3;
+}
+
+.lock-btn:hover {
+  opacity: 1;
+  border-color: var(--accent, #7bb5e3);
+}
+
+.timer-card[data-locked='true'] .lock-btn {
+  opacity: 0.95;
+  border-color: color-mix(in srgb, var(--accent, #7bb5e3) 60%, transparent);
+}
+
+/* Countdown: dos filas, números con separadores centrados */
 .timer-countdown {
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
-  margin-bottom: 1.2rem;
+  margin-bottom: 1rem;
   position: relative;
 }
 
-.unit {
+.nums {
   display: flex;
-  flex-direction: column;
   align-items: center;
+  justify-content: center;
+}
+
+.nums .value {
+  font-size: clamp(1.5rem, 10cqw, 4.6rem);
   line-height: 1;
 }
 
-.value {
-  font-size: 3.6rem;
+.nums .sep {
+  font-size: clamp(1rem, 6.4cqw, 2.6rem);
+  line-height: 1;
+  margin: 0 0.35em;
+  color: var(--text-muted);
+  /* centrar verticalmente dentro de la línea de números */
+  transform: translateY(-0.045em);
 }
 
-.label {
-  font-size: 0.95rem;
+.labs {
+  display: flex;
+  justify-content: space-evenly;
+  margin-top: 0.35rem;
+}
+
+.labs .label {
+  font-size: clamp(0.62rem, 2.3cqw, 0.98rem);
   color: var(--text-dim);
   letter-spacing: 1px;
-  margin-top: 0.5rem;
-}
-
-.sep {
-  margin: 0 0.6rem;
-  position: relative;
-  top: -4px;
-  font-size: 2.4rem;
 }
 
 .timer-bar {
   width: 100%;
-  height: 18px;
+  height: clamp(8px, 1.6rem, 18px);
   background-color: var(--border);
   border-radius: 999px;
   overflow: hidden;
   position: relative;
+  flex-shrink: 0;
 }
 
 .timer-bar-fill {
@@ -478,34 +526,39 @@ input {
 }
 
 .timer-percent {
-  margin-top: 0.4rem;
+  margin-top: 0.35rem;
   color: var(--accent, #7bb5e3);
-  font-size: 1.1rem;
+  font-size: clamp(0.9rem, 3cqw, 1.15rem);
   letter-spacing: 1px;
   position: relative;
+  flex-shrink: 0;
 }
 
 .timer-foot {
-  margin-top: 1.2rem;
+  margin-top: auto;
+  padding-top: 0.8rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 0.5rem;
   position: relative;
+  flex-shrink: 0;
 }
 
 .timer-when {
   color: var(--text-muted);
-  font-size: 0.95rem;
+  font-size: clamp(0.68rem, 2.6cqw, 0.95rem);
 }
 
 .timer-config {
-  padding: 0.35rem 0.9rem;
+  padding: 0.3rem 0.8rem;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   color: var(--text-dim);
-  font-size: 0.95rem;
+  font-size: clamp(0.68rem, 2.7cqw, 0.95rem);
   letter-spacing: 1px;
   transition: all 0.2s ease;
+  white-space: nowrap;
 }
 
 .timer-config:hover {
@@ -515,37 +568,41 @@ input {
   box-shadow: 0 0 12px color-mix(in srgb, var(--accent, #7bb5e3) 18%, transparent);
 }
 
-/* ===== Tamaños de tarjeta ===== */
-.size-small {
-  padding: 1.1rem;
+/* Manija de redimensionado */
+.resize-handle {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 20px;
+  height: 20px;
+  cursor: nwse-resize;
+  touch-action: none;
+  border-right: 3px solid var(--accent, #7bb5e3);
+  border-bottom: 3px solid var(--accent, #7bb5e3);
+  border-bottom-right-radius: 4px;
+  opacity: 0.65;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  z-index: 3;
 }
 
-.size-small .value {
-  font-size: 2.3rem;
+.timer-card:hover .resize-handle,
+.resize-handle:active {
+  opacity: 1;
 }
 
-.size-small .sep {
-  font-size: 1.6rem;
+.resize-handle::after {
+  content: '';
+  position: absolute;
+  right: 2px;
+  bottom: 2px;
+  width: 6px;
+  height: 6px;
+  border-right: 2px solid var(--accent, #7bb5e3);
+  border-bottom: 2px solid var(--accent, #7bb5e3);
 }
 
-.size-small .timer-name {
-  font-size: 1.4rem;
-}
-
-.size-medium .value {
-  font-size: 3rem;
-}
-
-.size-large .value {
-  font-size: 4.4rem;
-}
-
-.size-large .timer-name {
-  font-size: 2.4rem;
-}
-
-.size-large .timer-bar {
-  height: 22px;
+.timer-card[data-locked='true'] .resize-handle {
+  display: none;
 }
 
 /* ===== Grid de timers ===== */
@@ -575,9 +632,36 @@ input {
 }
 
 .timers-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
   gap: 1.4rem;
+}
+
+.demo-note {
+  margin-top: 2.2rem;
+  background-color: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius-sm);
+  padding: 1rem 1.2rem;
+}
+
+.demo-note p {
+  margin: 0;
+  color: var(--text-dim);
+  font-size: 1.05rem;
+  line-height: 1.4;
+}
+
+.demo-note-icon {
+  margin-right: 0.4rem;
+}
+
+.timers-hero .hero-actions {
+  display: flex;
+  gap: 0.7rem;
+  flex-wrap: wrap;
 }
 
 .empty-state {
@@ -602,6 +686,57 @@ input {
   color: var(--text-dim);
   font-size: 1.15rem;
   margin: 0 0 1.4rem;
+}
+
+/* Toggle candado */
+.lock-toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  cursor: pointer;
+  color: var(--text);
+  font-size: 1.05rem;
+  letter-spacing: 1px;
+}
+
+.lock-toggle-input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.lock-toggle-track {
+  position: relative;
+  width: 46px;
+  height: 26px;
+  background-color: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+  flex-shrink: 0;
+}
+
+.lock-toggle-track::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background-color: var(--text-dim);
+  transition: transform 0.2s ease, background-color 0.2s ease;
+}
+
+.lock-toggle-input:checked + .lock-toggle-track {
+  background-color: var(--accent-glow);
+  border-color: var(--accent);
+}
+
+.lock-toggle-input:checked + .lock-toggle-track::after {
+  transform: translateX(20px);
+  background-color: var(--accent);
 }
 
 /* ===== Config page ===== */
@@ -706,22 +841,13 @@ input {
 
 /* ===== Responsive ===== */
 @media (max-width: 520px) {
-  .size-large .value {
-    font-size: 2.6rem;
-  }
-
-  .size-medium .value,
-  .value {
-    font-size: 2.2rem;
-  }
-
-  .sep {
-    font-size: 1.4rem;
+  .timers-card-full {
+    width: 100% !important;
   }
 
   .timer-foot {
     flex-direction: column;
-    gap: 0.6rem;
+    gap: 0.5rem;
   }
 
   .config-layout {

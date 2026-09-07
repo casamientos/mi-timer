@@ -2,11 +2,11 @@
 import { TAMAÑOS } from '../scripts/timers';
 
 interface Props {
-  value?: string;
+  width?: number;
   name: string;
 }
 
-const { value = 'medium', name } = Astro.props;
+const { width = 330, name } = Astro.props;
 ---
 
 <div class="size-selector" data-size-selector>
@@ -14,14 +14,18 @@ const { value = 'medium', name } = Astro.props;
     <button
       type="button"
       class="size-option option-{t.value}"
-      data-size-option={t.value}
+      data-preset-width={t.width}
     >
       <span class="size-name">{t.label}</span>
       <span class="size-preview preview-{t.value}"></span>
       <span class="size-hint">{t.hint}</span>
     </button>
   ))}
-  <input type="hidden" name={name} data-size-value value={value} />
+  <input type="hidden" name={name} data-width-input value={width} />
+  <div class="width-row">
+    <span>Ancho actual:</span>
+    <b data-width-label>{width}px</b>
+  </div>
 </div>
 
 <style>
@@ -35,8 +39,8 @@ const { value = 'medium', name } = Astro.props;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 0.6rem;
-    padding: 1rem 0.7rem;
+    gap: 0.55rem;
+    padding: 1rem 0.6rem;
     background-color: var(--bg-input);
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
@@ -62,6 +66,7 @@ const { value = 'medium', name } = Astro.props;
   .size-hint {
     color: var(--text-muted);
     font-size: 0.9rem;
+    text-align: center;
   }
 
   .size-preview {
@@ -70,14 +75,17 @@ const { value = 'medium', name } = Astro.props;
     border-radius: 6px;
     background-color: var(--bg-card);
     position: relative;
+    height: 22px;
+    width: min(40%, 56px);
+    transition: width 0.15s ease;
   }
 
   .size-preview::after {
     content: '';
     position: absolute;
     height: 3px;
-    width: 80%;
-    left: 10%;
+    width: 70%;
+    left: 15%;
     top: 50%;
     transform: translateY(-50%);
     border-radius: 999px;
@@ -85,54 +93,78 @@ const { value = 'medium', name } = Astro.props;
   }
 
   .preview-small {
-    width: 64px;
-    height: 30px;
+    width: min(28%, 36px);
   }
 
   .preview-medium {
-    width: 84px;
-    height: 40px;
+    width: min(38%, 48px);
   }
 
   .preview-large {
-    width: 104px;
-    height: 50px;
+    width: min(48%, 62px);
+  }
+
+  .width-row {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--text-dim);
+    font-size: 0.95rem;
+  }
+
+  .width-row b {
+    color: var(--accent);
+    letter-spacing: 1px;
   }
 
   @media (max-width: 480px) {
     .size-selector {
       grid-template-columns: 1fr;
     }
+
+    .width-row {
+      grid-column: 1;
+    }
   }
 </style>
 
 <script>
   function initSelector(selector: HTMLElement) {
-    const hidden = selector.querySelector<HTMLInputElement>('[data-size-value]');
+    const hidden = selector.querySelector<HTMLInputElement>('[data-width-input]');
+    const label = selector.querySelector<HTMLElement>('[data-width-label]');
     const options = Array.from(
-      selector.querySelectorAll<HTMLElement>('[data-size-option]'),
+      selector.querySelectorAll<HTMLElement>('[data-preset-width]'),
     );
 
-    function aplicar(size: string) {
-      if (hidden) hidden.value = size;
+    function aplicarWidth(width: number) {
+      const w = Math.max(220, Math.min(560, Math.round(width)));
+      if (hidden) hidden.value = String(w);
+      if (label) label.textContent = `${w}px`;
       options.forEach((opt) => {
-        opt.classList.toggle('selected', opt.dataset.sizeOption === size);
+        const preset = Number(opt.dataset.presetWidth ?? 0);
+        opt.classList.toggle('selected', preset === w);
       });
       selector.dispatchEvent(
-        new CustomEvent('sizechange', { detail: { size }, bubbles: true }),
+        new CustomEvent('widthchange', { detail: { width: w }, bubbles: true }),
       );
     }
 
     options.forEach((opt) => {
-      opt.addEventListener('click', () => aplicar(opt.dataset.sizeOption ?? ''));
+      opt.addEventListener('click', () =>
+        aplicarWidth(Number(opt.dataset.presetWidth ?? 0)),
+      );
     });
 
-    selector.addEventListener('sizevalue', (event) => {
+    selector.addEventListener('widthvalue', (event) => {
       const detail = (event as CustomEvent).detail;
-      if (detail && typeof detail.size === 'string') aplicar(detail.size);
+      if (detail && typeof detail.width === 'number') aplicarWidth(detail.width);
     });
 
-    if (hidden?.value) aplicar(hidden.value);
+    if (hidden?.value) {
+      const current = Number(hidden.value);
+      if (!Number.isNaN(current)) aplicarWidth(current);
+    }
   }
 
   document
