@@ -1,0 +1,99 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout title="Mis timers · mi-timer">
+  <div class="container timers-page">
+    <div class="timers-hero" data-auth-shell style="display: none">
+      <div>
+        <h1>Mis timers</h1>
+        <p class="sub" data-greeting>Gestioná tus cuentas regresivas</p>
+      </div>
+      <a class="btn btn-primary" href="/mi-timer/config">
+        + Nuevo timer
+      </a>
+    </div>
+
+    <div class="state-shell" data-loading>
+      <div class="state-box">
+        <div class="spinner"></div>
+        <p>Verificando sesión…</p>
+      </div>
+    </div>
+
+    <div class="state-shell" data-auth-shell style="display: none">
+      <div class="state-box">
+        <h1>Necesitás iniciar sesión</h1>
+        <p>Para ver y crear tus timers, primero ingresá a tu cuenta.</p>
+        <a class="btn btn-primary" href="/mi-timer/login">Iniciar sesión</a>
+      </div>
+    </div>
+
+    <div class="timers-grid" data-timers-grid style="display: none"></div>
+
+    <div class="empty-state" data-empty style="display: none">
+      <div class="empty-icon">⏰</div>
+      <h2>Todavía no tenés timers</h2>
+      <p>Creá tu primera cuenta regresiva para empezar a contar el tiempo.</p>
+      <a class="btn btn-primary" href="/mi-timer/config">
+        + Crear mi primer timer
+      </a>
+    </div>
+  </div>
+
+  <script>
+    import { onAuth } from '../scripts/auth';
+    import { leerTimers } from '../scripts/timers';
+    import { timerCardHtml, initTimerCards } from '../scripts/timerCard';
+
+    const timersGrid = document.querySelector<HTMLElement>('[data-timers-grid]');
+    const emptyState = document.querySelector<HTMLElement>('[data-empty]');
+    const loading = document.querySelector<HTMLElement>('[data-loading]');
+    const authShells = document.querySelectorAll<HTMLElement>('[data-auth-shell]');
+    const greeting = document.querySelector<HTMLElement>('[data-greeting]');
+
+    let currentUser: any = null;
+
+    function getHourMessage(): string {
+      const h = new Date().getHours();
+      if (h < 12) return 'Buenos días';
+      if (h < 19) return 'Buenas tardes';
+      return 'Buenas noches';
+    }
+
+    function renderTimers(userId: string) {
+      const timers = leerTimers(userId);
+      if (timers.length === 0) {
+        timersGrid!.style.display = 'none';
+        emptyState!.style.display = '';
+        return;
+      }
+      emptyState!.style.display = 'none';
+      timersGrid!.style.display = 'grid';
+      timersGrid!.innerHTML = timers.map(timerCardHtml).join('\n');
+      initTimerCards(timersGrid!);
+    }
+
+    function setAuthUI(user: any) {
+      currentUser = user;
+      loading!.style.display = 'none';
+
+      authShells.forEach((el) => {
+        el.style.display = user ? '' : 'none';
+      });
+
+      if (user) {
+        const name = user.displayName || user.email.split('@')[0] || '';
+        const saludo = `${getHourMessage()}, ${name}!`;
+        if (greeting) greeting.textContent = saludo;
+        renderTimers(user.uid);
+      }
+    }
+
+    onAuth(setAuthUI);
+
+    window.addEventListener('auth:timers-updated', () => {
+      if (currentUser) renderTimers(currentUser.uid);
+    });
+  </script>
+</Layout>

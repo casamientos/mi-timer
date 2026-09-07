@@ -1,0 +1,298 @@
+---
+import Layout from '../layouts/Layout.astro';
+import ColorPicker from '../components/ColorPicker.astro';
+import SizeSelector from '../components/SizeSelector.astro';
+---
+
+<Layout title="Configuración · mi-timer">
+  <div class="container config-page">
+    <div data-config-shell style="display: none">
+      <div class="config-layout">
+        <div class="config-panel">
+          <a class="back-link" href="/mi-timer/timers">← Volver a mis timers</a>
+          <h1 data-page-title>Nuevo timer</h1>
+
+          <div class="alert alert-error" data-error-box style="display: none"></div>
+
+          <form data-timer-form novalidate>
+            <div class="field">
+              <label for="nombre">Nombre del timer</label>
+              <input
+                id="nombre"
+                type="text"
+                name="nombre"
+                data-input-nombre
+                placeholder="Ej: ¡CALCULO 2!"
+                required
+              />
+            </div>
+
+            <div class="field">
+              <label for="inicio">Fecha y hora de inicio</label>
+              <input
+                id="inicio"
+                type="datetime-local"
+                name="inicio"
+                data-input-inicio
+                required
+              />
+              <span class="hint">Cuándo empieza a contar la barra de progreso.</span>
+            </div>
+
+            <div class="field">
+              <label for="fin">Fecha y hora de finalización</label>
+              <input
+                id="fin"
+                type="datetime-local"
+                name="fin"
+                data-input-fin
+                required
+              />
+              <span class="hint">Cuándo llega a 0 la cuenta regresiva.</span>
+            </div>
+
+            <div class="field">
+              <label>Color</label>
+              <ColorPicker name="color" value="#7bb5e3" />
+            </div>
+
+            <div class="field">
+              <label>Tamaño</label>
+              <SizeSelector name="size" value="medium" />
+            </div>
+
+            <div class="config-actions">
+              <button class="btn btn-primary" type="submit" data-save>
+                Guardar
+              </button>
+              <button class="btn btn-danger" type="button" data-delete style="display: none">
+                Eliminar
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <div class="config-preview">
+          <h2>Vista previa en vivo</h2>
+          <div class="preview-shell" data-preview></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="state-shell" data-loading>
+      <div class="state-box">
+        <div class="spinner"></div>
+        <p>Verificando sesión…</p>
+      </div>
+    </div>
+
+    <div class="state-shell" data-state-auth style="display: none">
+      <div class="state-box">
+        <h1>Necesitás iniciar sesión</h1>
+        <p>Para crear o editar timers, primero ingresá a tu cuenta.</p>
+        <a class="btn btn-primary" href="/mi-timer/login">Iniciar sesión</a>
+      </div>
+    </div>
+
+    <div class="state-shell" data-state-notfound style="display: none">
+      <div class="notfound-card">
+        <h1>Timer no encontrado</h1>
+        <p>No encontramos ese timer en tu cuenta.</p>
+        <a class="btn btn-primary" href="/mi-timer/timers">Volver a mis timers</a>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    import { onAuth } from '../scripts/auth';
+    import {
+      leerTimers,
+      agregarTimer,
+      actualizarTimer,
+      eliminarTimer,
+      esTamañoValido,
+      type TimerData,
+      type TimerSize,
+    } from '../scripts/timers';
+    import { timerCardHtml, initTimerCards } from '../scripts/timerCard';
+    import { aInputLocal } from '../scripts/countdown';
+
+    const params = new URLSearchParams(window.location.search);
+    const timerId = params.get('id');
+
+    const shell = document.querySelector<HTMLElement>('[data-config-shell]');
+    const loading = document.querySelector<HTMLElement>('[data-loading]');
+    const authState = document.querySelector<HTMLElement>('[data-state-auth]');
+    const notFoundState = document.querySelector<HTMLElement>('[data-state-notfound]');
+    const form = document.querySelector<HTMLFormElement>('[data-timer-form]');
+    const errorBox = document.querySelector<HTMLElement>('[data-error-box]');
+    const saveBtn = document.querySelector<HTMLButtonElement>('[data-save]');
+    const deleteBtn = document.querySelector<HTMLButtonElement>('[data-delete]');
+    const pageTitle = document.querySelector<HTMLElement>('[data-page-title]');
+    const preview = document.querySelector<HTMLElement>('[data-preview]');
+
+    const inputNombre = document.querySelector<HTMLInputElement>('[data-input-nombre]');
+    const inputInicio = document.querySelector<HTMLInputElement>('[data-input-inicio]');
+    const inputFin = document.querySelector<HTMLInputElement>('[data-input-fin]');
+
+    let currentUser: any = null;
+    let editing: TimerData | null = null;
+
+    function mostrarError(msg: string) {
+      if (!errorBox) return;
+      errorBox.textContent = msg;
+      errorBox.style.display = '';
+    }
+
+    function limpiarError() {
+      if (errorBox) errorBox.style.display = 'none';
+    }
+
+    function campo(selector: string): HTMLInputElement {
+      return form?.querySelector(selector) as HTMLInputElement;
+    }
+
+    function datosActualesDeFormulario(): Omit<TimerData, 'id' | 'createdAt'> {
+      return {
+        name: campo('[data-input-nombre]').value.trim(),
+        startDate: new Date(campo('[data-input-inicio]').value).toISOString(),
+        endDate: new Date(campo('[data-input-fin]').value).toISOString(),
+        color: campo('[data-color-value]').value || '#7bb5e3',
+        size: esTamañoValido(campo('[data-size-value]').value)
+          ? (campo('[data-size-value]').value as TimerSize)
+          : 'medium',
+      };
+    }
+
+    function rellenarFormulario(timer: TimerData) {
+      inputNombre!.value = timer.name;
+      inputInicio!.value = aInputLocal(timer.startDate);
+      inputFin!.value = aInputLocal(timer.endDate);
+      const picker = shell!.querySelector('[data-color-picker]');
+      picker!.dispatchEvent(
+        new CustomEvent('colorvalue', { detail: { color: timer.color } }),
+      );
+      const selector = shell!.querySelector('[data-size-selector]');
+      selector!.dispatchEvent(
+        new CustomEvent('sizevalue', { detail: { size: timer.size } }),
+      );
+    }
+
+    function actualizarPreview() {
+      if (!preview) return;
+      const { name, startDate, endDate, color, size } = datosActualesDeFormulario();
+      const timer: TimerData = {
+        id: editing?.id ?? 'preview',
+        name: name || 'Nuevo timer',
+        startDate,
+        endDate,
+        color,
+        size,
+        createdAt: Date.now(),
+      };
+      preview.innerHTML = timerCardHtml(timer);
+      initTimerCards(preview);
+    }
+
+    function defaultsParaNuevo() {
+      const inicio = new Date();
+      const fin = new Date(inicio.getTime() + 24 * 60 * 60 * 1000);
+      const pad = (n: number) => n.toString().padStart(2, '0');
+      const fmt = (d: Date) =>
+        `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(
+          d.getHours(),
+        )}:${pad(d.getMinutes())}`;
+      inputInicio!.value = fmt(inicio);
+      inputFin!.value = fmt(fin);
+    }
+
+    const actualizarPreviewDebounced = (() => {
+      let timer: number | null = null;
+      return () => {
+        if (timer) window.clearTimeout(timer);
+        timer = window.setTimeout(actualizarPreview, 150);
+      };
+    })();
+
+    form?.addEventListener('input', actualizarPreviewDebounced);
+    form?.addEventListener('colorchange', actualizarPreview);
+    form?.addEventListener('sizechange', actualizarPreview);
+
+    form?.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      limpiarError();
+      if (!currentUser) return;
+
+      const data = datosActualesDeFormulario();
+
+      if (!data.name) {
+        mostrarError('Escribí un nombre para el timer.');
+        return;
+      }
+      const inicioMs = new Date(data.startDate).getTime();
+      const finMs = new Date(data.endDate).getTime();
+      if (Number.isNaN(inicioMs) || Number.isNaN(finMs)) {
+        mostrarError('Las fechas no son válidas.');
+        return;
+      }
+      if (finMs <= inicioMs) {
+        mostrarError('La fecha de finalización debe ser posterior a la de inicio.');
+        return;
+      }
+
+      saveBtn!.disabled = true;
+
+      if (editing) {
+        actualizarTimer(currentUser.uid, { ...editing, ...data });
+      } else {
+        agregarTimer(currentUser.uid, data);
+      }
+
+      window.location.href = '/mi-timer/timers';
+    });
+
+    deleteBtn?.addEventListener('click', () => {
+      if (!currentUser || !editing) return;
+      const ok = window.confirm(`¿Eliminar el timer "${editing.name}"?`);
+      if (!ok) return;
+      eliminarTimer(currentUser.uid, editing.id);
+      window.location.href = '/mi-timer/timers';
+    });
+
+    onAuth((user) => {
+      currentUser = user;
+      loading!.style.display = 'none';
+
+      if (!user) {
+        authState!.style.display = '';
+        return;
+      }
+
+      const timers = leerTimers(user.uid);
+
+      if (timerId) {
+        editing = timers.find((t) => t.id === timerId) ?? null;
+        if (!editing) {
+          notFoundState!.style.display = '';
+          return;
+        }
+        pageTitle!.textContent = 'Configurar timer';
+        deleteBtn!.style.display = '';
+        rellenarFormulario(editing);
+      } else {
+        defaultsParaNuevo();
+        const picker = shell!.querySelector('[data-color-picker]');
+        picker!.dispatchEvent(
+          new CustomEvent('colorvalue', { detail: { color: '#7bb5e3' } }),
+        );
+        const selector = shell!.querySelector('[data-size-selector]');
+        selector!.dispatchEvent(
+          new CustomEvent('sizevalue', { detail: { size: 'medium' } }),
+        );
+      }
+
+      shell!.style.display = '';
+      actualizarPreview();
+    });
+  </script>
+</Layout>

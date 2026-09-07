@@ -1,0 +1,145 @@
+---
+import { COLORES_PREDEFINIDOS } from '../scripts/timers';
+
+interface Props {
+  value?: string;
+  name: string;
+}
+
+const { value = '#7bb5e3', name } = Astro.props;
+---
+
+<div class="color-picker" data-color-picker>
+  <div class="swatches">
+    {COLORES_PREDEFINIDOS.map((color) => (
+      <button
+        type="button"
+        class="swatch"
+        data-swatch={color}
+        style={`--c: ${color}`}
+        aria-label={`Color ${color}`}
+      ></button>
+    ))}
+    <label class="swatch swatch-custom" aria-label="Color personalizado" title="Color personalizado">
+      <input type="color" data-custom-color value={value} />
+    </label>
+  </div>
+  <input type="hidden" name={name} data-color-value value={value} />
+  <div class="color-row">
+    <span class="color-chip" data-color-chip style="background-color: {value}"></span>
+    <span class="color-hex" data-color-hex>{value}</span>
+  </div>
+</div>
+
+<style>
+  .color-picker {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+  }
+
+  .swatches {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.55rem;
+    align-items: center;
+  }
+
+  .swatch {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    border: 2px solid var(--border);
+    background-color: var(--c);
+    cursor: pointer;
+    transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+    padding: 0;
+  }
+
+  .swatch:hover {
+    transform: scale(1.15);
+    border-color: var(--text);
+  }
+
+  .swatch.selected {
+    border-color: var(--text);
+    box-shadow: 0 0 0 2px var(--bg-card), 0 0 12px color-mix(in srgb, var(--c) 60%, transparent);
+    transform: scale(1.15);
+  }
+
+  .swatch-custom {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+    background: conic-gradient(from 0deg, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00);
+  }
+
+  .swatch-custom input {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
+  }
+
+  .color-row {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+  }
+
+  .color-chip {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+  }
+
+  .color-hex {
+    color: var(--text-dim);
+    letter-spacing: 1px;
+  }
+</style>
+
+<script>
+  function initPicker(picker: HTMLElement) {
+    const hidden = picker.querySelector<HTMLInputElement>('[data-color-value]');
+    const custom = picker.querySelector<HTMLInputElement>('[data-custom-color]');
+    const chip = picker.querySelector<HTMLElement>('[data-color-chip]');
+    const hex = picker.querySelector<HTMLElement>('[data-color-hex]');
+    const swatches = Array.from(picker.querySelectorAll<HTMLElement>('[data-swatch]'));
+
+    function aplicar(color: string) {
+      if (hidden) hidden.value = color;
+      if (custom) custom.value = color;
+      if (chip) chip.style.backgroundColor = color;
+      if (hex) hex.textContent = color;
+      swatches.forEach((s) => {
+        s.classList.toggle('selected', s.dataset.swatch === color);
+      });
+      picker.dispatchEvent(
+        new CustomEvent('colorchange', { detail: { color }, bubbles: true }),
+      );
+    }
+
+    swatches.forEach((sw) => {
+      sw.addEventListener('click', () => aplicar(sw.dataset.swatch ?? ''));
+    });
+
+    custom?.addEventListener('input', () => {
+      aplicar(custom.value);
+    });
+
+    picker.addEventListener('colorvalue', (event) => {
+      const detail = (event as CustomEvent).detail;
+      if (detail && typeof detail.color === 'string') aplicar(detail.color);
+    });
+
+    if (hidden?.value) aplicar(hidden.value);
+  }
+
+  document.querySelectorAll<HTMLElement>('[data-color-picker]').forEach(initPicker);
+</script>

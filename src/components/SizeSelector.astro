@@ -1,0 +1,141 @@
+---
+import { TAMAÑOS } from '../scripts/timers';
+
+interface Props {
+  value?: string;
+  name: string;
+}
+
+const { value = 'medium', name } = Astro.props;
+---
+
+<div class="size-selector" data-size-selector>
+  {TAMAÑOS.map((t) => (
+    <button
+      type="button"
+      class="size-option option-{t.value}"
+      data-size-option={t.value}
+    >
+      <span class="size-name">{t.label}</span>
+      <span class="size-preview preview-{t.value}"></span>
+      <span class="size-hint">{t.hint}</span>
+    </button>
+  ))}
+  <input type="hidden" name={name} data-size-value value={value} />
+</div>
+
+<style>
+  .size-selector {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.7rem;
+  }
+
+  .size-option {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 1rem 0.7rem;
+    background-color: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    transition: all 0.2s ease;
+  }
+
+  .size-option:hover {
+    border-color: var(--accent);
+  }
+
+  .size-option.selected {
+    border-color: var(--accent);
+    background-color: var(--accent-glow);
+    box-shadow: 0 0 14px var(--accent-glow);
+  }
+
+  .size-name {
+    color: var(--text);
+    letter-spacing: 1px;
+    font-size: 1.05rem;
+  }
+
+  .size-hint {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+  }
+
+  .size-preview {
+    display: block;
+    border: 1px solid var(--accent);
+    border-radius: 6px;
+    background-color: var(--bg-card);
+    position: relative;
+  }
+
+  .size-preview::after {
+    content: '';
+    position: absolute;
+    height: 3px;
+    width: 80%;
+    left: 10%;
+    top: 50%;
+    transform: translateY(-50%);
+    border-radius: 999px;
+    background-color: var(--accent);
+  }
+
+  .preview-small {
+    width: 64px;
+    height: 30px;
+  }
+
+  .preview-medium {
+    width: 84px;
+    height: 40px;
+  }
+
+  .preview-large {
+    width: 104px;
+    height: 50px;
+  }
+
+  @media (max-width: 480px) {
+    .size-selector {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+
+<script>
+  function initSelector(selector: HTMLElement) {
+    const hidden = selector.querySelector<HTMLInputElement>('[data-size-value]');
+    const options = Array.from(
+      selector.querySelectorAll<HTMLElement>('[data-size-option]'),
+    );
+
+    function aplicar(size: string) {
+      if (hidden) hidden.value = size;
+      options.forEach((opt) => {
+        opt.classList.toggle('selected', opt.dataset.sizeOption === size);
+      });
+      selector.dispatchEvent(
+        new CustomEvent('sizechange', { detail: { size }, bubbles: true }),
+      );
+    }
+
+    options.forEach((opt) => {
+      opt.addEventListener('click', () => aplicar(opt.dataset.sizeOption ?? ''));
+    });
+
+    selector.addEventListener('sizevalue', (event) => {
+      const detail = (event as CustomEvent).detail;
+      if (detail && typeof detail.size === 'string') aplicar(detail.size);
+    });
+
+    if (hidden?.value) aplicar(hidden.value);
+  }
+
+  document
+    .querySelectorAll<HTMLElement>('[data-size-selector]')
+    .forEach(initSelector);
+</script>

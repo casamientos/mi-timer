@@ -1,23 +1,121 @@
-<!doctype html>
-<html lang="en">
-	<head>
-		<meta charset="utf-8" />
-		<meta name="viewport" content="width=device-width" />
-		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-		<link rel="icon" href="/favicon.ico" />
-		<meta name="generator" content={Astro.generator} />
-		<title>Astro Basics</title>
-	</head>
-	<body>
-		<slot />
-	</body>
-</html>
+---
+import '../styles/global.css';
 
-<style>
-	html,
-	body {
-		margin: 0;
-		width: 100%;
-		height: 100%;
-	}
-</style>
+interface Props {
+  title?: string;
+  showNav?: boolean;
+}
+
+const { title = 'mi-timer', showNav = true } = Astro.props;
+---
+
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" href="/mi-timer/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="/mi-timer/favicon.ico" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=VT323&display=swap"
+      rel="stylesheet"
+    />
+    <title>{title}</title>
+  </head>
+  <body>
+    {showNav && (
+      <nav class="navbar" aria-label="Navegación principal">
+        <div class="container navbar-inner">
+          <a class="brand" href="/mi-timer/">
+            <span class="brand-icon">⏱</span>
+            mi-timer
+          </a>
+          <div class="nav-links">
+            <a class="nav-link" href="/mi-timer/">Inicio</a>
+            <a
+              class="nav-link"
+              data-auth="logged-out-only"
+              href="/mi-timer/login"
+            >
+              Iniciar sesión
+            </a>
+            <a
+              class="nav-link"
+              data-auth="logged-out-only"
+              href="/mi-timer/register"
+            >
+              Crear cuenta
+            </a>
+            <a
+              class="nav-link"
+              data-auth="logged-in-only"
+              href="/mi-timer/timers"
+            >
+              Mis timers
+            </a>
+            <span
+              class="nav-user"
+              data-auth="logged-in-only"
+              data-user-name
+              style="display: none"
+            >
+              <span class="dot"></span>
+              <span data-user-name-text></span>
+            </span>
+            <button
+              class="btn btn-ghost"
+              data-auth="logged-in-only"
+              data-logout-button
+            >
+              Salir
+            </button>
+          </div>
+        </div>
+      </nav>
+    )}
+    <main>
+      <slot />
+    </main>
+
+    <script>
+      import { onAuth, cerrarSesion } from '../scripts/auth';
+
+      const logoutBtn = document.querySelector('[data-logout-button]');
+      const loggedInEls = document.querySelectorAll<HTMLElement>('[data-auth="logged-in-only"]');
+      const loggedOutEls = document.querySelectorAll<HTMLElement>('[data-auth="logged-out-only"]');
+      const userEls = document.querySelectorAll<HTMLElement>('[data-user-name]');
+
+      interface AuthUser {
+        displayName: string | null;
+        email: string | null;
+      }
+
+      function setAuthUI(user: AuthUser | null) {
+        const isLoggedIn = Boolean(user);
+        loggedInEls.forEach((el) => {
+          el.style.display = isLoggedIn ? '' : 'none';
+        });
+        loggedOutEls.forEach((el) => {
+          el.style.display = isLoggedIn ? 'none' : '';
+        });
+        const name = user?.displayName || (user?.email ? user.email.split('@')[0] : '');
+        if (name) {
+          userEls.forEach((el) => {
+            el.style.display = '';
+          });
+          document.querySelectorAll<HTMLElement>('[data-user-name-text]').forEach((el) => {
+            el.textContent = name;
+          });
+        }
+      }
+
+      logoutBtn?.addEventListener('click', async () => {
+        await cerrarSesion();
+      });
+
+      onAuth(setAuthUI);
+    </script>
+  </body>
+</html>
