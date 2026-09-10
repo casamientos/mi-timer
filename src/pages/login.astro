@@ -2,11 +2,20 @@
 import Layout from '../layouts/Layout.astro';
 ---
 
-<Layout title="Iniciar sesión · mi-timer">
+<Layout title="Ingresá · mi-timer">
   <div class="auth-shell">
     <div class="auth-card">
-      <h1>Bienvenido a mi-timer</h1>
-      <p class="subtitle">Ingresá para gestionar tus timers</p>
+      <h1>mi-timer</h1>
+      <p class="subtitle">Entrá a tu cuenta o creá una</p>
+
+      <div class="auth-tabs" role="tablist">
+        <button class="tab" type="button" role="tab" data-tab="login">
+          Iniciar sesión
+        </button>
+        <button class="tab" type="button" role="tab" data-tab="registro">
+          Crear cuenta
+        </button>
+      </div>
 
       <div class="alert alert-error" data-error-box style="display: none"></div>
 
@@ -35,22 +44,77 @@ import Layout from '../layouts/Layout.astro';
           />
         </div>
 
-        <button class="btn btn-primary" type="submit" data-submit>Ingresar</button>
+        <button class="btn btn-primary" type="submit" data-submit-login>
+          Ingresar
+        </button>
       </form>
 
-      <p class="auth-switch">
-        ¿No tenés cuenta?
-        <a href="/mi-timer/register">Crear cuenta</a>
-      </p>
+      <form data-register-form novalidate style="display: none">
+        <div class="field">
+          <label for="nombre">Nombre</label>
+          <input
+            id="nombre"
+            type="text"
+            name="nombre"
+            autocomplete="name"
+            placeholder="Tu nombre"
+            required
+          />
+        </div>
+
+        <div class="field">
+          <label for="email-r">Email</label>
+          <input
+            id="email-r"
+            type="email"
+            name="email"
+            autocomplete="email"
+            placeholder="tu@email.com"
+            required
+          />
+        </div>
+
+        <div class="field">
+          <label for="password-r">Contraseña</label>
+          <input
+            id="password-r"
+            type="password"
+            name="password"
+            autocomplete="new-password"
+            placeholder="Mínimo 6 caracteres"
+            required
+          />
+          <span class="hint">Mínimo 6 caracteres.</span>
+        </div>
+
+        <div class="field">
+          <label for="confirm-r">Confirmar contraseña</label>
+          <input
+            id="confirm-r"
+            type="password"
+            name="confirm"
+            autocomplete="new-password"
+            placeholder="Repetí la contraseña"
+            required
+          />
+        </div>
+
+        <button class="btn btn-primary" type="submit" data-submit-register>
+          Crear cuenta
+        </button>
+      </form>
     </div>
   </div>
 
   <script>
-    import { onAuth, loginUsuario } from '../scripts/auth';
+    import { onAuth, loginUsuario, registrarUsuario } from '../scripts/auth';
 
-    const form = document.querySelector<HTMLFormElement>('[data-login-form]');
+    const tabs = Array.from(document.querySelectorAll<HTMLElement>('[data-tab]'));
+    const loginForm = document.querySelector<HTMLFormElement>('[data-login-form]');
+    const registerForm = document.querySelector<HTMLFormElement>('[data-register-form]');
     const errorBox = document.querySelector<HTMLElement>('[data-error-box]');
-    const submitBtn = document.querySelector<HTMLButtonElement>('[data-submit]');
+    const submitLogin = document.querySelector<HTMLButtonElement>('[data-submit-login]');
+    const submitRegister = document.querySelector<HTMLButtonElement>('[data-submit-register]');
 
     function mostrarError(msg: string) {
       if (!errorBox) return;
@@ -62,27 +126,46 @@ import Layout from '../layouts/Layout.astro';
       if (errorBox) errorBox.style.display = 'none';
     }
 
+    function activarTab(tab: string) {
+      const esRegistro = tab === 'registro';
+      tabs.forEach((btn) => {
+        const activo = btn.dataset.tab === tab;
+        btn.classList.toggle('is-active', activo);
+        btn.setAttribute('aria-selected', String(activo));
+      });
+      registerForm!.style.display = esRegistro ? '' : 'none';
+      loginForm!.style.display = esRegistro ? 'none' : '';
+      limpiarError();
+    }
+
+    tabs.forEach((btn) => {
+      btn.addEventListener('click', () => activarTab(btn.dataset.tab ?? 'login'));
+    });
+
+    const params = new URLSearchParams(window.location.search);
+    activarTab(params.get('tab') === 'registro' ? 'registro' : 'login');
+
     onAuth((user) => {
       if (user) {
-        window.location.href = '/mi-timer/timers';
+        window.location.href = '/mi-timer/';
       }
     });
 
-    form?.addEventListener('submit', async (event) => {
+    loginForm?.addEventListener('submit', async (event) => {
       event.preventDefault();
       limpiarError();
 
-      const email = (form.elements.namedItem('email') as HTMLInputElement).value.trim();
-      const password = (form.elements.namedItem('password') as HTMLInputElement).value;
+      const email = (loginForm.elements.namedItem('email') as HTMLInputElement).value.trim();
+      const password = (loginForm.elements.namedItem('password') as HTMLInputElement).value;
 
       if (!email || !password) {
         mostrarError('Completá email y contraseña para continuar.');
         return;
       }
 
-      if (submitBtn) {
-        submitBtn.disabled = true;
-        submitBtn.textContent = 'Ingresando…';
+      if (submitLogin) {
+        submitLogin.disabled = true;
+        submitLogin.textContent = 'Ingresando…';
       }
 
       try {
@@ -90,11 +173,82 @@ import Layout from '../layouts/Layout.astro';
       } catch (err) {
         const friendly = (err as Error).message ?? 'Error al iniciar sesión.';
         mostrarError(friendly);
-        if (submitBtn) {
-          submitBtn.disabled = false;
-          submitBtn.textContent = 'Ingresar';
+        if (submitLogin) {
+          submitLogin.disabled = false;
+          submitLogin.textContent = 'Ingresar';
+        }
+      }
+    });
+
+    registerForm?.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      limpiarError();
+
+      const nombre = (registerForm.elements.namedItem('nombre') as HTMLInputElement).value.trim();
+      const email = (registerForm.elements.namedItem('email') as HTMLInputElement).value.trim();
+      const password = (registerForm.elements.namedItem('password') as HTMLInputElement).value;
+      const confirm = (registerForm.elements.namedItem('confirm') as HTMLInputElement).value;
+
+      if (!nombre || !email || !password) {
+        mostrarError('Completá todos los campos.');
+        return;
+      }
+      if (password.length < 6) {
+        mostrarError('La contraseña debe tener al menos 6 caracteres.');
+        return;
+      }
+      if (password !== confirm) {
+        mostrarError('Las contraseñas no coinciden.');
+        return;
+      }
+
+      if (submitRegister) {
+        submitRegister.disabled = true;
+        submitRegister.textContent = 'Creando cuenta…';
+      }
+
+      try {
+        await registrarUsuario(nombre, email, password);
+        window.location.href = '/mi-timer/';
+      } catch (err) {
+        const friendly = (err as Error).message ?? 'Error al crear la cuenta.';
+        mostrarError(friendly);
+        if (submitRegister) {
+          submitRegister.disabled = false;
+          submitRegister.textContent = 'Crear cuenta';
         }
       }
     });
   </script>
+
+  <style>
+    .auth-tabs {
+      display: flex;
+      gap: 0.35rem;
+      margin-bottom: 1.5rem;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 0.3rem;
+    }
+
+    .auth-tabs .tab {
+      flex: 1;
+      border: none;
+      background: transparent;
+      color: var(--text-dim);
+      font-family: inherit;
+      font-size: 1.02rem;
+      padding: 0.65rem 0.4rem;
+      border-radius: 999px;
+      cursor: pointer;
+      transition: background 0.2s ease, color 0.2s ease;
+    }
+
+    .auth-tabs .tab.is-active {
+      background: var(--accent);
+      color: #0a0a0a;
+      font-weight: 600;
+    }
+  </style>
 </Layout>

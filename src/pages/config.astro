@@ -9,7 +9,7 @@ import SizeSelector from '../components/SizeSelector.astro';
     <div data-config-shell style="display: none">
       <div class="config-layout">
         <div class="config-panel">
-          <a class="back-link" href="/mi-timer/timers">← Volver a mis timers</a>
+          <a class="back-link" href="/mi-timer/">← Volver a mis timers</a>
           <h1 data-page-title>Nuevo timer</h1>
 
           <div class="alert alert-error" data-error-box style="display: none"></div>
@@ -116,7 +116,7 @@ import SizeSelector from '../components/SizeSelector.astro';
       <div class="notfound-card">
         <h1>Timer no encontrado</h1>
         <p>No encontramos ese timer en tu cuenta.</p>
-        <a class="btn btn-primary" href="/mi-timer/timers">Volver a mis timers</a>
+        <a class="btn btn-primary" href="/mi-timer/">Volver a mis timers</a>
       </div>
     </div>
   </div>
@@ -278,7 +278,7 @@ import SizeSelector from '../components/SizeSelector.astro';
         agregarTimer(currentUser.uid, data);
       }
 
-      window.location.href = '/mi-timer/timers';
+      window.location.href = '/mi-timer/';
     });
 
     deleteBtn?.addEventListener('click', () => {
@@ -286,7 +286,7 @@ import SizeSelector from '../components/SizeSelector.astro';
       const ok = window.confirm(`¿Eliminar el timer "${editing.name}"?`);
       if (!ok) return;
       eliminarTimer(currentUser.uid, editing.id);
-      window.location.href = '/mi-timer/timers';
+      window.location.href = '/mi-timer/';
     });
 
     onAuth((user) => {

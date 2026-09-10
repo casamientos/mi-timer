@@ -33,7 +33,7 @@ const { title = 'mi-timer', showNav = true } = Astro.props;
             mi-timer
           </a>
           <div class="nav-links">
-            <a class="nav-link" href="/mi-timer/">Inicio</a>
+            <a class="nav-link" data-auth="logged-out-only" href="/mi-timer/">Inicio</a>
             <a
               class="nav-link"
               data-auth="logged-out-only"
@@ -44,14 +44,14 @@ const { title = 'mi-timer', showNav = true } = Astro.props;
             <a
               class="nav-link"
               data-auth="logged-out-only"
-              href="/mi-timer/register"
+              href="/mi-timer/login?tab=registro"
             >
               Crear cuenta
             </a>
             <a
               class="nav-link"
               data-auth="logged-in-only"
-              href="/mi-timer/timers"
+              href="/mi-timer/"
             >
               Mis timers
             </a>
@@ -113,7 +113,7 @@ const { title = 'mi-timer', showNav = true } = Astro.props;
 
       logoutBtn?.addEventListener('click', async () => {
         await cerrarSesion();
-        window.location.href = '/mi-timer/timers';
+        window.location.href = '/mi-timer/';
       });
 
       onAuth(setAuthUI);

@@ -47,11 +47,13 @@ export function esTamañoValido(size: string): size is TimerSize {
 }
 
 export function normalizarTimer(t: Partial<TimerData> & Record<string, unknown>): TimerData {
+  const clamp = (n: number, min: number, max: number) => Math.min(max, Math.max(min, n));
   const rawWidth = t.width;
   const width =
-    typeof rawWidth === 'number' && rawWidth >= WIDTH_MIN && rawWidth <= WIDTH_MAX
-      ? Math.round(rawWidth)
+    typeof rawWidth === 'number'
+      ? Math.round(clamp(rawWidth, WIDTH_MIN, WIDTH_MAX))
       : SIZE_WIDTH[t.size as TimerSize] ?? WIDTH_DEFAULT;
+  const rawHeight = t.height;
   return {
     id: String(t.id ?? `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`),
     name: String(t.name ?? 'Sin nombre'),
@@ -59,7 +61,9 @@ export function normalizarTimer(t: Partial<TimerData> & Record<string, unknown>)
     endDate: String(t.endDate ?? new Date().toISOString()),
     color: typeof t.color === 'string' && t.color ? t.color : '#7bb5e3',
     width,
-    height: typeof t.height === 'number' && t.height >= HEIGHT_MIN ? Math.round(t.height) : null,
+    height: typeof rawHeight === 'number' && rawHeight >= HEIGHT_MIN
+      ? Math.round(clamp(rawHeight, HEIGHT_MIN, HEIGHT_MAX))
+      : null,
     locked: Boolean(t.locked),
     createdAt: typeof t.createdAt === 'number' ? t.createdAt : Date.now(),
   };
